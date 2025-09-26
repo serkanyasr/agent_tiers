@@ -108,7 +108,7 @@ src/agent_tiers/
 
 ### 1. Clone and Setup
 ```bash
-git clone <repository-url>
+git clone https://github.com/serkanyasr/agent_tiers.git
 cd agent_tiers
 ```
 
