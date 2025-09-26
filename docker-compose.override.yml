@@ -1,0 +1,23 @@
+# Development overrides
+
+services:
+  api:
+    volumes:
+      - .:/app
+    environment:
+      - API_ENV=dev
+    command: python -m src.agent_tiers.infrastructure.api.main
+
+  ui:
+    volumes:
+      - .:/app
+    environment:
+      - API_BASE_URL=http://localhost:8000
+
+  mcp_memory:
+    volumes:
+      - .:/app
+
+  mcp_rag:
+    volumes:
+      - .:/app

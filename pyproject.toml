@@ -1,0 +1,21 @@
+[project]
+name = "agent-tiers"
+version = "0.1.0"
+description = "A sophisticated AI agent system with RAG, memory management, and MCP integration"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.30.0",
+    "fastapi>=0.116.1",
+    "fastmcp>=2.12.2",
+    "docling>=2.53.0",
+    "psycopg2>=2.9.10",
+    "psycopg2-binary>=2.9.10",
+    "huggingface-hub[hf-xet]>=0.34.4",
+    "langchain-experimental>=0.3.4",
+    "langchain-openai>=0.3.32",
+    "langchain-text-splitters>=0.3.11",
+    "mem0ai>=0.1.117",
+    "pydantic-ai>=0.8.1",
+    "streamlit>=1.49.1",
+]

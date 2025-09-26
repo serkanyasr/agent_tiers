@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "memory": {
+      "protocol": "http-stream",
+      "url": "http://mcp_memory:8050/mcp",
+      "headers": {
+        "Accept": "text/event-stream"
+      }
+    },
+    "rag": {
+      "protocol": "http-stream",
+      "url": "http://mcp_rag:8055/mcp",
+      "headers": {
+        "Accept": "text/event-stream"
+      }
+    }
+  }
+}

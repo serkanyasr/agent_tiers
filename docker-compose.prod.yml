@@ -1,0 +1,24 @@
+# Production configuration
+
+services:
+  api:
+    environment:
+      - API_ENV=prod
+    restart: always
+
+  ui:
+    environment:
+      - API_BASE_URL=http://api:8000
+    restart: always
+
+  mcp_memory:
+    restart: always
+
+  mcp_rag:
+    restart: always
+
+  memory_postgres:
+    restart: always
+
+  rag_postgres:
+    restart: always

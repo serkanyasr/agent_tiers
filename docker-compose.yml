@@ -1,0 +1,128 @@
+services:
+  # PostgreSQL Databases
+  memory_postgres:
+    image: pgvector/pgvector:pg17
+    container_name: memory_db
+    environment:
+      POSTGRES_DB: ${MEMORY_DB_NAME:-memory_db}
+      POSTGRES_USER: ${MEMORY_DB_USER:-memory_user}
+      POSTGRES_PASSWORD: ${MEMORY_DB_PASSWORD:-memory_pass}
+    ports:
+      - "${MEMORY_DB_PORT:-5432}:5432"
+    volumes:
+      - memory_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MEMORY_DB_USER:-memory_user} -d ${MEMORY_DB_NAME:-memory_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rag_postgres:
+    image: pgvector/pgvector:pg17
+    container_name: rag_db
+    environment:
+      POSTGRES_DB: ${RAG_DB_NAME:-rag_db}
+      POSTGRES_USER: ${RAG_DB_USER:-rag_user}
+      POSTGRES_PASSWORD: ${RAG_DB_PASSWORD:-rag_pass}
+    ports:
+      - "${RAG_DB_PORT:-5433}:5432"
+    volumes:
+      - rag_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${RAG_DB_USER:-rag_user} -d ${RAG_DB_NAME:-rag_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MCP Memory Server
+  mcp_memory:
+    build: .
+    container_name: mcp_memory
+    command: python -m src.agent_tiers.infrastructure.mcp.memory_mcp
+    environment:
+      - MEMORY_DB_HOST=memory_postgres
+      - MEMORY_DB_PORT=5432
+      - MEMORY_DB_NAME=${MEMORY_DB_NAME:-memory_db}
+      - MEMORY_DB_USER=${MEMORY_DB_USER:-memory_user}
+      - MEMORY_DB_PASSWORD=${MEMORY_DB_PASSWORD:-memory_pass}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8050:8050"
+    depends_on:
+      memory_postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # MCP RAG Server
+  mcp_rag:
+    build: .
+    container_name: mcp_rag
+    command: python -m src.agent_tiers.infrastructure.mcp.rag_mcp
+    environment:
+      - RAG_DB_HOST=rag_postgres
+      - RAG_DB_PORT=5432
+      - RAG_DB_NAME=${RAG_DB_NAME:-rag_db}
+      - RAG_DB_USER=${RAG_DB_USER:-rag_user}
+      - RAG_DB_PASSWORD=${RAG_DB_PASSWORD:-rag_pass}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8055:8055"
+    depends_on:
+      rag_postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Main API Application
+  api:
+    build: .
+    container_name: agent_tiers_api
+    command: python -m src.agent_tiers.infrastructure.api.main
+    environment:
+      - MEMORY_DB_HOST=memory_postgres
+      - MEMORY_DB_PORT=5432
+      - MEMORY_DB_NAME=${MEMORY_DB_NAME:-memory_db}
+      - MEMORY_DB_USER=${MEMORY_DB_USER:-memory_user}
+      - MEMORY_DB_PASSWORD=${MEMORY_DB_PASSWORD:-memory_pass}
+      - RAG_DB_HOST=rag_postgres
+      - RAG_DB_PORT=5432
+      - RAG_DB_NAME=${RAG_DB_NAME:-rag_db}
+      - RAG_DB_USER=${RAG_DB_USER:-rag_user}
+      - RAG_DB_PASSWORD=${RAG_DB_PASSWORD:-rag_pass}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - API_ENV=${API_ENV:-dev}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_LOG_LEVEL=${API_LOG_LEVEL:-INFO}
+      - MCP_MEMORY_URL=http://mcp_memory:8050/mcp
+      - MCP_RAG_URL=http://mcp_rag:8055/mcp
+    ports:
+      - "8000:8000"
+    depends_on:
+      memory_postgres:
+        condition: service_healthy
+      rag_postgres:
+        condition: service_healthy
+      mcp_memory:
+        condition: service_started
+      mcp_rag:
+        condition: service_started
+    restart: unless-stopped
+
+  # Streamlit UI
+  ui:
+    build: .
+    container_name: agent_tiers_ui
+    command: streamlit run src/agent_tiers/infrastructure/ui/app.py --server.port=8501 --server.address=0.0.0.0
+    environment:
+      - API_URL=http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  memory_data:
+  rag_data:
