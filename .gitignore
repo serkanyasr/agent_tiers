@@ -22,8 +22,6 @@ venv/
 # Environment files
 .env
 .env.local
-.env.*
-.env.example
 
 # Testing & linting
 .pytest_cache/
