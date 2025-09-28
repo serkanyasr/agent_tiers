@@ -13,6 +13,14 @@
       "headers": {
         "Accept": "text/event-stream"
       }
+    },
+    "firecrawl-mcp": {
+      "protocol": "stdio",
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": ""
+      }
     }
   }
 }
