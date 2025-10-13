@@ -123,8 +123,7 @@ class PydanticAIAgentService(AgentService):
             )
             
             # Prepare prompt
-            full_prompt = self._prepare_prompt(message, agent_context)
-            
+            full_prompt = self._prepare_prompt(message, agent_context)            
             # Streaming response
             full_response = ""
             async with agent.iter(full_prompt, deps=context) as run:

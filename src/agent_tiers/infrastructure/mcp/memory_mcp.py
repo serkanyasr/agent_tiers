@@ -56,6 +56,7 @@ async def save_memory(ctx: Context,user_id: str, text: str) -> str:
 
     Args:
         ctx: The MCP server provided context which includes the Mem0 client
+        user_id: The user ID to associate the memory with
         text: The content to store in memory, including any relevant details and context
     """
     try:
@@ -75,6 +76,7 @@ async def get_all_memories(ctx: Context,user_id:str) -> str:
 
     Args:
         ctx: The MCP server provided context which includes the Mem0 client
+        user_id: The user ID to retrieve memories for
 
     Returns a JSON formatted list of all stored memories, including when they were created
     and their content. Results are paginated with a default of 50 items per page.

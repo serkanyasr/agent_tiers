@@ -18,4 +18,5 @@ dependencies = [
     "mem0ai>=0.1.117",
     "pydantic-ai>=0.8.1",
     "streamlit>=1.49.1",
+    "chainlit>=2.8.3"
 ]

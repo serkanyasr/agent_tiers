@@ -78,3 +78,31 @@ class HealthStatus(BaseModel):
     llm_connection: bool
     version: str
     timestamp: datetime
+    
+    
+    
+    
+class SessionInfo(BaseModel):
+    session_id: str
+    user_id: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+    last_message: Optional[str] = None
+
+class MessageInfo(BaseModel):
+    message_id: str
+    session_id: str
+    role: str  # 'user' or 'assistant'
+    content: str
+    created_at: datetime
+    metadata: Optional[dict] = None
+
+class SessionListResponse(BaseModel):
+    sessions: List[SessionInfo]
+    total: int
+
+class MessageHistoryResponse(BaseModel):
+    messages: List[MessageInfo]
+    session_id: str
+    total: int
