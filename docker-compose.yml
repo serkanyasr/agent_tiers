@@ -77,7 +77,7 @@ services:
   # Main API Application
   api:
     build: .
-    container_name: agent_tiers_api
+    container_name: api
     command: python -m src.agent_tiers.infrastructure.api.main
     environment:
       - MEMORY_DB_HOST=memory_postgres
@@ -111,14 +111,27 @@ services:
     restart: unless-stopped
 
   # Streamlit UI
+  # ui:
+  #   build: .
+  #   container_name: ui
+  #   command: streamlit run src/agent_tiers/infrastructure/ui/app.py --server.port=8501 --server.address=0.0.0.0
+  #   environment:
+  #     - API_URL=http://api:8000
+  #   ports:
+  #     - "8501:8501"
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped
+
+  # Chainlit UI
   ui:
     build: .
-    container_name: agent_tiers_ui
-    command: streamlit run src/agent_tiers/infrastructure/ui/app.py --server.port=8501 --server.address=0.0.0.0
+    container_name: ui
+    command: chainlit run src/agent_tiers/infrastructure/ui/chainlit_app.py --host 0.0.0.0 --port 8502
     environment:
       - API_URL=http://api:8000
     ports:
-      - "8501:8501"
+      - "8502:8502"
     depends_on:
       - api
     restart: unless-stopped

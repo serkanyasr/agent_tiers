@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     # UI
     APP_HOST: str
     APP_PORT: int
+    CHAINLIT_AUTH_SECRET: str
 
     # Upload constraints
     UPLOAD_MAX_FILE_MB: int = 25

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import AsyncIterator, Dict, Any, List, Optional
 from ...domain.ports.repositories import SessionRepository, MessageRepository
 from ...domain.ports.services import AgentService
+from ...infrastructure.cache.agent_cache import AgentCache
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class StreamChatUseCase:
     def __init__(self, deps: StreamChatDeps):
         """Initialize stream chat use case with dependencies."""
         self.deps = deps
+        self._agent_cache = AgentCache()
 
     def _extract_tool_calls(self, result) -> list[dict]:
         """Extract tool calls from agent result."""
@@ -66,11 +68,11 @@ class StreamChatUseCase:
 
     async def stream(self, message: str, session_id: Optional[str], user_id: Optional[str], metadata: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
         """Execute streaming chat use case with message and context."""
+        
         current_session_id = await self.get_or_create_session(session_id, user_id, metadata)
         yield {"type": "session", "session_id": current_session_id}
         
         context_messages = await self.get_context(current_session_id)
-        
         agent_context = {
             "session_id": current_session_id,
             "user_id": user_id,
@@ -81,7 +83,12 @@ class StreamChatUseCase:
         
         await self.deps.messages.add(current_session_id, "user", message, {**metadata, "user_id": user_id})
         
-        agent = await self.deps.agent_service.create_agent({})
+        # Get or create agent for this session
+        agent = self._agent_cache.get(current_session_id)
+        if agent is None:
+            agent = await self.deps.agent_service.create_agent({})
+            self._agent_cache.set(current_session_id, agent)
+            
         full_response = ""
         tools_used = []
         
@@ -96,9 +103,13 @@ class StreamChatUseCase:
                 logger.error(f"Agent streaming error: {event['error']}")
                 yield event
             elif event["type"] == "end":
-                break
+                await self.deps.messages.add(current_session_id, "assistant", full_response, {"streamed": True, "tool_calls": len(tools_used)})
+                yield {"type": "end"}
 
         await self.deps.messages.add(current_session_id, "assistant", full_response, {"streamed": True, "tool_calls": len(tools_used)})
         yield {"type": "end"}
 
+    async def cleanup_session(self, session_id: str):
+        """Clean up resources for a session."""
+        self._agent_cache.remove(session_id)
 

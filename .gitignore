@@ -36,3 +36,5 @@ Thumbs.db
 *.log
 *.sqlite
 *.db
+
+.chainlit/

@@ -71,16 +71,16 @@ def test_db_connection() -> bool:
             # Check PostgreSQL version
             cursor.execute("SELECT version();")
             version = cursor.fetchone()
-            print(f"PostgreSQL version: {version[0]}")
+            logger.info(f"Connected to PostgreSQL database: {version[0]}")
             
             # Check if pgvector extension is enabled
             cursor.execute("SELECT * FROM pg_extension WHERE extname = 'vector';")
             vector_ext = cursor.fetchone()
             if vector_ext:
-                print("pgvector extension is enabled.")
+                logger.info("pgvector extension is enabled.")
             else:
-                print("pgvector extension is NOT enabled! ")
-                
+                logger.info("pgvector extension is NOT enabled! ")
+
                 cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
                 conn.commit()
                 logger.info("pgvector extension is initialized.")
@@ -88,7 +88,7 @@ def test_db_connection() -> bool:
         conn.close()
         return True
     except Exception as e:
-        print(f"Database connection error: {e}")
+        logger.error(f"Database connection error: {e}")
         return False
 
     

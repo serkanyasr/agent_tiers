@@ -97,7 +97,7 @@ src/agent_tiers/
 - **Memory**: Mem0 for persistent memory
 - **RAG**: Vector embeddings with semantic search
 - **MCP**: Model Context Protocol for tool integration
-- **UI**: Streamlit
+- **UI**: Chainlit
 - **Containerization**: Docker & Docker Compose
 
 ## 🚀 Quick Start
@@ -132,7 +132,7 @@ docker-compose ps
 
 ### 4. Access the Application
 - **API**: http://localhost:8000
-- **UI**: http://localhost:8501
+- **Chainlit UI**: http://localhost:8501
 - **API Docs**: http://localhost:8000/docs
 
 ## 📖 API Endpoints
@@ -257,6 +257,30 @@ Edit `src/agent_tiers/infrastructure/mcp/mcp_config.json` to add new MCP servers
 }
 ```
 
+## 🎨 User Interfaces
+
+### Chainlit UI (Recommended) 🆕
+
+Modern, session-aware chat interface with built-in authentication support:
+
+```bash
+# Run Chainlit UI
+python run_chainlit.py
+
+# With custom options
+python run_chainlit.py --host 0.0.0.0 --port 8501 --watch --debug
+```
+
+**Features:**
+- ✅ **Session Management**: Automatic session handling with history
+- ✅ **File Upload**: Drag & drop document upload with preview
+- ✅ **Streaming Responses**: Real-time AI responses
+- ✅ **User Authentication**: Ready for OAuth/password auth (future)
+- ✅ **Chat History**: Resume previous conversations
+- ✅ **Settings Panel**: Configurable chunking and processing options
+- ✅ **Dark/Light Theme**: Modern UI with theme support
+
+
 ## 🧪 Development
 
 ### Local Development
@@ -274,8 +298,8 @@ docker-compose up -d mcp_memory mcp_rag
 # 3. Run API
 python -m src.agent_tiers.infrastructure.api.main
 
-# 4. Run UI (in another terminal)
-streamlit run src/agent_tiers/infrastructure/ui/app.py
+# 4. Run Chainlit UI (in another terminal)
+python run_chainlit.py --watch
 ```
 
 ## 🐳 Docker Commands

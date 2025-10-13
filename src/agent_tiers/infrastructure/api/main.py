@@ -38,23 +38,22 @@ from .schemas import (
     ChatResponse,
     ErrorResponse,
     HealthStatus,
+    MessageHistoryResponse,
+    MessageInfo,
+    SessionInfo,
+    SessionListResponse,
     ToolCall
 )
 
-from ...application.agent_service.orchestrator import  create_agent_orchestrator
 from ...application.use_cases.chat import ChatUseCase, ChatDependencies
 from ...application.use_cases.stream_chat import StreamChatUseCase, StreamChatDeps
-from ...infrastructure.adapters.repositories_asyncpg import (
-    AsyncpgSessionRepository,
-    AsyncpgMessageRepository,
-)
-from ...infrastructure.adapters.retrieval_service import DBRetrievalService
 from ...application.use_cases.upload_documents import UploadDocumentsUseCase, UploadDeps
 from ...infrastructure.adapters.ingestion_service import PipelineIngestionService
 
 orchestrator = create_agent_orchestrator()
 
-logger = logging.getLogger(__name__)
+# Initialize global services
+agent_service = orchestrator.get_agent_service()
 
 # API configuration
 API_ENV = settings.API_ENV
@@ -64,6 +63,8 @@ API_LOG_LEVEL = settings.API_LOG_LEVEL
 
 
 # Configure logging
+logger = logging.getLogger(__name__)
+
 logging.basicConfig(
     level=getattr(logging, API_LOG_LEVEL.upper()),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -197,7 +198,6 @@ async def chat(request: ChatRequest):
         sessions_repo = AsyncpgSessionRepository()
         messages_repo = AsyncpgMessageRepository()
         retrieval_service = DBRetrievalService()
-        agent_service = PydanticAIAgentService()
 
         use_case = ChatUseCase(ChatDependencies(
             sessions=sessions_repo,
@@ -233,7 +233,6 @@ async def chat_stream(request: ChatRequest):
         logger.info(f"/chat/stream request_id={request_id} user_id={request.user_id}")
         sessions_repo = AsyncpgSessionRepository()
         messages_repo = AsyncpgMessageRepository()
-        agent_service = PydanticAIAgentService()
 
         use_case = StreamChatUseCase(StreamChatDeps(
             sessions=sessions_repo,
@@ -267,9 +266,6 @@ async def chat_stream(request: ChatRequest):
     except Exception as e:
         logger.error(f"Streaming chat failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
 
 @app.post("/documents/upload")
 async def upload_document(
@@ -374,7 +370,138 @@ async def upload_document(
         "ingest_success": results_summary.get("success", 0),
         "cleaned": True
     }
+
+
+@app.get("/users/{user_id}/sessions", response_model=SessionListResponse)
+async def get_user_sessions(user_id: str):
+    """Get all sessions for a user."""
+    try:
+        sessions_repo = AsyncpgSessionRepository()
+        
+        # Get all sessions for user using your existing function
+        sessions = await sessions_repo.get_user_sessions(user_id)
+        
+        session_list = [
+            SessionInfo(
+                session_id=s["session_id"],
+                user_id=s["user_id"],
+                created_at=s["created_at"],
+                updated_at=s["updated_at"],
+                message_count=s.get("message_count", 0),
+                last_message=s.get("last_message", "")[:100] if s.get("last_message") else None
+            )
+            for s in sessions
+        ]
+        
+        return SessionListResponse(
+            sessions=session_list,
+            total=len(session_list)
+        )
     
+    except Exception as e:
+        logger.error(f"Failed to get user sessions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/users/{user_id}/sessions")
+async def create_new_session(user_id: str):
+    """Create a new session for user."""
+    try:
+        sessions_repo = AsyncpgSessionRepository()
+        
+        # Create session using your existing function
+        session_id = await sessions_repo.create(
+            user_id=user_id,
+            metadata={}
+        )
+        
+        return {
+            "session_id": session_id,
+            "user_id": user_id,
+            "created_at": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        logger.error(f"Failed to create session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a session and all its messages."""
+    try:
+        sessions_repo = AsyncpgSessionRepository()
+        messages_repo = AsyncpgMessageRepository()
+        
+        # First delete all messages in the session
+        await messages_repo.delete(session_id)
+        
+        # Delete session 
+        await sessions_repo.delete(session_id)
+        
+        return {"success": True, "message": "Session deleted"}
+    
+    except Exception as e:
+        logger.error(f"Failed to delete session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/users/{user_id}/exists")
+async def check_user_exists(user_id: str):
+    """Check if user has any sessions."""
+    try:
+        sessions_repo = AsyncpgSessionRepository()
+        
+        # Check if user exists using your new function
+        exists = await sessions_repo.check_user_exists(user_id)
+        
+        # Get session count
+        if exists:
+            sessions = await sessions_repo.get_user_sessions(user_id)
+            session_count = len(sessions)
+        else:
+            session_count = 0
+        
+        return {
+            "exists": exists,
+            "user_id": user_id,
+            "session_count": session_count
+        }
+    
+    except Exception as e:
+        logger.error(f"Failed to check user: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sessions/{session_id}/messages", response_model=MessageHistoryResponse)
+async def get_session_messages(session_id: str, limit: Optional[int] = None):
+    """Get all messages for a session."""
+    try:
+        messages_repo = AsyncpgMessageRepository()
+        
+        # Get messages using your existing function
+        messages = await messages_repo.list(session_id, limit=limit)
+        
+        message_list = [
+            MessageInfo(
+                id=m["id"],
+                role=m["role"],
+                content=m["content"],
+                created_at=m["created_at"],
+                metadata=m.get("metadata", {})
+            )
+            for m in messages
+        ]
+        
+        return MessageHistoryResponse(
+            messages=message_list,
+            session_id=session_id,
+            total=len(message_list)
+        )
+    
+    except Exception as e:
+        logger.error(f"Failed to get session messages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Exception handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
