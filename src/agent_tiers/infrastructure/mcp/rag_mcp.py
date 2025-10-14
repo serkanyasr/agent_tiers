@@ -20,6 +20,8 @@ from ..db.rag_db import (
     hybrid_search,
     get_document,
     list_documents,
+    delete_document,
+    delete_all_documents,
     get_document_chunks,
     RAGContext
 )
@@ -314,6 +316,39 @@ async def list_documents_tool(ctx: Context, input_data: Optional[DocumentListInp
     except Exception as e:
         logger.error(f"Document listing failed{e}")
         return []
+
+@mcp.tool()
+async def delete_document_tool(ctx: Context, input_data: DocumentInput) -> None:
+    """
+    Delete a document by ID.
+
+    Args:
+        ctx: FastMCP context containing database connection
+        input_data: Document deletion parameters
+    """
+    try:
+        pool = ctx.request_context.lifespan_context.db_pool
+        await delete_document(pool, input_data.document_id)
+    except Exception as e:
+        logger.error(f"Document deletion failed: {e}")
+
+
+@mcp.tool()
+async def delete_all_documents_tool(ctx: Context) -> None:
+    """
+    Delete all documents from the database.
+
+    Args:
+        ctx: FastMCP context containing database connection
+    Returns:
+        True if deletion was successful, False otherwise
+    """
+    try:
+        pool = ctx.request_context.lifespan_context.db_pool
+        await delete_all_documents(pool)
+    except Exception as e:
+        logger.error(f"Failed to delete all documents: {e}")
+
 
 
 async def main():

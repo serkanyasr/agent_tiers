@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     LLM_PROVIDER: str = "openai"
     LLM_MODEL: str = "gpt-4o-mini"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_LLM_MODEL: str
 
     # Embeddings
     EMBEDDING_PROVIDER: str = "openai"

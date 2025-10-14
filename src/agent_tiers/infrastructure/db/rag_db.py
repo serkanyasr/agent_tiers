@@ -495,6 +495,37 @@ async def list_documents(
             for row in results
         ]
 
+async def delete_document(pool: Pool,document_id: str) -> None:
+    """
+    Delete a document by ID.
+
+    Args:
+        document_id: Document UUID
+    """
+    
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            DELETE FROM documents
+            WHERE id = $1::uuid
+            """,
+            document_id,
+        )
+        logger.info(f"Document {document_id} deleted.")
+
+async def delete_all_documents(pool: Pool) -> None:
+    """
+    Delete all documents and associated chunks.
+
+    Args:
+        None
+    """
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM chunks")
+        await conn.execute("DELETE FROM documents")
+        logger.info("All documents and chunks deleted.")
+        
+
 
 # Vector Search Functions
 async def vector_search(
@@ -599,6 +630,7 @@ async def get_document_chunks(pool:Pool, document_id: str) -> List[Dict[str, Any
             }
             for row in results
         ]
+
 
 
 async def test_connection() -> bool:

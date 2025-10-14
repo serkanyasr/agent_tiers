@@ -2,6 +2,7 @@
 
 import logging
 import os
+from typing import List
 import chainlit as cl
 import httpx
 import json
@@ -56,7 +57,7 @@ class APIClient:
                         yield json.loads(data)
                     except json.JSONDecodeError:
                         cl.logger.warning(f"Invalid JSON line: {line}")
-
+    @staticmethod
     async def user_exists(user_id: str) -> bool:
         """Check if user exists."""
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -69,7 +70,7 @@ class APIClient:
             "user_id": data.get("user_id"),
             "session_count": data.get("session_count", 0)
             }
-            
+    @staticmethod        
     async def create_session(user_id: str):
         """Create a new session for the user."""
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -77,8 +78,7 @@ class APIClient:
             response = await client.post(url)
             response.raise_for_status()
             return response.json().get("session_id")
-
-
+    @staticmethod
     async def check_api_health() -> bool:
         """Check API health."""
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -89,6 +89,30 @@ class APIClient:
                 return True
             except httpx.RequestError:
                 return False
+    @staticmethod
+    async def upload_files(file_paths: List[str]):
+        """Upload multiple files to the API."""
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            url = f"{API_BASE_URL}/documents/upload"
+            
+            files_to_upload = []
+            file_handles = []
+            
+            try:
+                for file_path in file_paths:
+                    f = open(file_path, "rb")
+                    file_handles.append(f)
+                    files_to_upload.append(
+                        ("files", (os.path.basename(file_path), f, "application/octet-stream"))
+                    )
+                
+                response = await client.post(url, files=files_to_upload)
+                response.raise_for_status()
+                return response.json()
+            
+            finally:
+                for f in file_handles:
+                    f.close()
 
 
 @cl.password_auth_callback
@@ -134,6 +158,26 @@ async def on_message(message: cl.Message):
     token_buffer = []
     token_count = 0
 
+    if message.elements:
+        file_paths = []
+        for element in message.elements:
+            if isinstance(element, cl.File):
+                file_paths.append(element.path)
+        
+        if file_paths:
+            loading_msg = cl.Message(content="⏳ Documents exctracting and uploading...", author="System")
+            await loading_msg.send()
+            
+            try:
+                print(file_paths)
+                await APIClient.upload_files(file_paths)
+                await loading_msg.remove()
+            except Exception as e:
+                await loading_msg.remove()
+                await cl.Message(content=f"Error: {str(e)}").send()
+                return
+        
+    
     try:
         async for item in APIClient.stream_chat(content, user_id,session_id):
             item_type = item.get("type")

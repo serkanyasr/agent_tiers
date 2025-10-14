@@ -99,6 +99,12 @@ services:
       - MCP_RAG_URL=http://mcp_rag:8055/mcp
     ports:
       - "8000:8000"
+
+    deploy:
+        resources:
+          reservations:
+            devices:
+              - capabilities: [gpu]
     depends_on:
       memory_postgres:
         condition: service_healthy
@@ -127,9 +133,10 @@ services:
   ui:
     build: .
     container_name: ui
-    command: chainlit run src/agent_tiers/infrastructure/ui/chainlit_app.py --host 0.0.0.0 --port 8502
+    command: chainlit run src/agent_tiers/infrastructure/ui/chainlit_app.py --host 0.0.0.0 --port 8502 --no-cache
     environment:
       - API_URL=http://api:8000
+      - CHAINLIT_DISABLE_CONFIG=true
     ports:
       - "8502:8502"
     depends_on:
