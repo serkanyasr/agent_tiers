@@ -641,6 +641,13 @@ async def test_connection() -> bool:
         True if connection successful
     """
     try:
+        USER = settings.RAG_DB_USER
+        HOST = settings.RAG_DB_HOST
+        PORT = settings.RAG_DB_PORT
+        DBNAME = settings.RAG_DB_NAME
+        
+        logger.info(f"RAG DB connection attempt: host={HOST}, port={PORT}, user={USER}, database={DBNAME}")
+        
         async with db_pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
         return True

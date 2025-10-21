@@ -51,7 +51,8 @@ class Settings(BaseSettings):
     APP_HOST: str
     APP_PORT: int
     CHAINLIT_AUTH_SECRET: str
-
+    AGENT_CACHE_MAX_SIZE : int
+    AGENT_CACHE_TTL_SECONDS : int
     # Upload constraints
     UPLOAD_MAX_FILE_MB: int = 25
     UPLOAD_ALLOWED_EXTENSIONS: str = ".pdf,.docx,.doc,.txt,.md,.png,.jpg,.jpeg"

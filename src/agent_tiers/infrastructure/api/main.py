@@ -76,11 +76,20 @@ if API_ENV == "development":
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager"""
+    """Lifespan context manager with cache management"""
     # Startup
     logger.info("Starting up system...")
 
     try:
+        # Initialize enhanced cache
+        from ..cache.agent_cache import get_agent_cache
+        app.state.agent_cache = get_agent_cache(
+            max_size=int(os.getenv("AGENT_CACHE_MAX_SIZE", "1000")),
+            ttl_seconds=int(os.getenv("AGENT_CACHE_TTL_SECONDS", "3600"))
+        )
+        await app.state.agent_cache.start_cleanup_task()
+        logger.info("Agent cache initialized")
+
         # Initialize RAG database connections
         await initialize_database()
         await execute_init_sql(settings.SCHEMA_PATH)
@@ -93,7 +102,6 @@ async def lifespan(app: FastAPI):
             logger.info(orchestrator.servers)
         else:
             logger.info("MCP server was not loaded")
-
 
         # Test connections
         rag_db_ok = await rag_db_conn_test()
@@ -109,7 +117,6 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("MEMORY Database initialized")
 
-
     except Exception as e:
         logger.error(f"Startup failed: {e}")
         raise
@@ -120,6 +127,11 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down system...")
 
     try:
+        # Stop cache cleanup task
+        if hasattr(app.state, 'agent_cache'):
+            await app.state.agent_cache.stop_cleanup_task()
+            logger.info("Agent cache stopped")
+        
         await close_database()
         logger.info("Connections closed")
     except Exception as e:
@@ -234,11 +246,14 @@ async def chat_stream(request: ChatRequest):
         sessions_repo = AsyncpgSessionRepository()
         messages_repo = AsyncpgMessageRepository()
 
-        use_case = StreamChatUseCase(StreamChatDeps(
-            sessions=sessions_repo,
-            messages=messages_repo,
-            agent_service=agent_service,
-        ))
+        use_case = StreamChatUseCase(
+            deps=StreamChatDeps(
+                sessions=sessions_repo,
+                messages=messages_repo,
+                agent_service=agent_service,
+            ),
+            cache=app.state.agent_cache if hasattr(app.state, 'agent_cache') else None
+        )
 
         async def generate_stream():
             try:
@@ -499,6 +514,34 @@ async def get_session_messages(session_id: str, limit: Optional[int] = None):
     
     except Exception as e:
         logger.error(f"Failed to get session messages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/cache/stats")
+async def get_cache_stats():
+    """Get agent cache statistics"""
+    try:
+        if not hasattr(app.state, 'agent_cache'):
+            return {"error": "Agent cache not initialized"}
+        
+        cache_stats = app.state.agent_cache.get_stats()
+        return cache_stats
+    except Exception as e:
+        logger.error(f"Failed to get cache stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/cache/clear")
+async def clear_cache():
+    """Clear all cached agents"""
+    try:
+        if not hasattr(app.state, 'agent_cache'):
+            return {"error": "Agent cache not initialized"}
+        
+        app.state.agent_cache.clear()
+        return {"success": True, "message": "Cache cleared"}
+    except Exception as e:
+        logger.error(f"Failed to clear cache: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

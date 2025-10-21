@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import AsyncIterator, Dict, Any, List, Optional
 from ...domain.ports.repositories import SessionRepository, MessageRepository
 from ...domain.ports.services import AgentService
-from ...infrastructure.cache.agent_cache import AgentCache
+from ...infrastructure.cache.agent_cache import get_agent_cache
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,10 @@ class StreamChatDeps:
 class StreamChatUseCase:
     """Use case for streaming chat interactions."""
     
-    def __init__(self, deps: StreamChatDeps):
+    def __init__(self, deps: StreamChatDeps, cache=None):
         """Initialize stream chat use case with dependencies."""
         self.deps = deps
-        self._agent_cache = AgentCache()
+        self._agent_cache = cache or get_agent_cache()
 
     def _extract_tool_calls(self, result) -> list[dict]:
         """Extract tool calls from agent result."""
